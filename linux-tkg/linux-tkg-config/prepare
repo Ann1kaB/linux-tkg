@@ -4,6 +4,7 @@ ver54=72
 ver57=19
 ver58=16
 ver59=1
+ver510=rc1
 
 _tkg_initscript() {
   # Load external configuration file if present. Available variable values will overwrite customization.cfg ones.
@@ -20,7 +21,7 @@ _tkg_initscript() {
 
   if [ -z "$_version" ] && [ ! -e "$_path"/versel ]; then
     plain "Which kernel version do you want to install?"
-    read -rp "`echo $'  > 1. 5.8\n    2. 5.9\n    3. 5.7\n    4. 5.4\nchoice[1-4?]'`" _VERSEL;
+    read -rp "`echo $'  > 1. 5.8\n    2. 5.9\n    3. 5.7\n    4. 5.4\n    5. 5.10\nchoice[1-4?]'`" _VERSEL;
     case $_VERSEL in
           "2")
           echo "_basever=59" > "$_path"/versel
@@ -36,6 +37,11 @@ _tkg_initscript() {
 	  echo "_basever=54" > "$_path"/versel
 	  echo "_basekernel=5.4" >> "$_path"/versel
 	  echo "_sub=${ver54}" >> "$_path"/versel
+	  ;;
+          "5")
+	  echo "_basever=510" > "$_path"/versel
+	  echo "_basekernel=5.10" >> "$_path"/versel
+	  echo "_sub=${ver510}" >> "$_path"/versel
 	  ;;
           *)
           echo "_basever=58" > "$_path"/versel
@@ -64,6 +70,11 @@ _tkg_initscript() {
 		echo "_basever=59" > "$_path"/versel
 		echo "_basekernel=5.9" >> "$_path"/versel
 		echo "_sub=${ver59}" >> "$_path"/versel
+		;;
+		"5.10")
+		echo "_basever=510" > "$_path"/versel
+		echo "_basekernel=5.10" >> "$_path"/versel
+		echo "_sub=${ver510}" >> "$_path"/versel
 		;;
 		*)
 		error "There is something wrong with your kernel version selection, exiting..."
@@ -106,7 +117,7 @@ _tkg_initscript() {
   fi
 
   # CPU SCHED selector
-  if [ -z "$_cpusched" ] && [ ! -e "${_path}"/cpuschedset ]; then
+  if [ -z "$_cpusched" ] && [ ! -e "${_path}"/cpuschedset ] && [ "$_basever" != "510" ]; then
     plain "What CPU sched variant do you want to build/install?"
     if [ "$_basever" = "58" ]; then
       prompt="`echo $'  > 1.Undead PDS (TkG)\n    2.Project C / PDS\n    3.Project C / BMQ\n    4.CFS\nchoice[1-4?]: '`"
@@ -134,7 +145,7 @@ _tkg_initscript() {
       echo "_cpusched=\"cfs\"" > "${_path}"/cpuschedset
     else
 	if [ "$_basever" = "58" ]; then
-        echo "_cpusched=\"upds\"" > "${_path}"/cpuschedset
+          echo "_cpusched=\"upds\"" > "${_path}"/cpuschedset
 	else
 	  echo "_cpusched=\"pds\"" > "${_path}"/cpuschedset
 	fi
@@ -153,11 +164,13 @@ _tkg_initscript() {
   elif [ "$_cpusched" = "muqss" ] || [ "$_cpusched" = "MuQSS" ]; then
     echo "_cpusched=\"MuQSS\"" > "${_path}"/cpuschedset
   else
-    if [ "$_nofallback" != "true" ]; then
+    if [ "$_basever" = "510" ]; then
+      echo "_cpusched=\"cfs\"" > "${_path}"/cpuschedset
+    elif [ "$_nofallback" != "true" ]; then
       warning "Something is wrong with your cpusched selection. Do you want to fallback to CFS (default)?"
       read -rp "`echo $'    > N/y : '`" _fallback;
     fi
-    if [[ "$_fallback" =~ [yY] ]] || [ "$_nofallback" = "true" ]; then
+    if [[ "$_fallback" =~ [yY] ]] || [ "$_nofallback" = "true" ] || [ "$_basever" = "510" ]; then
       echo "_cpusched=\"cfs\"" > "${_path}"/cpuschedset
     else
       error "Exiting..."
@@ -989,7 +1002,7 @@ _tkg_srcprep() {
   fi
 
   # bcachefs
-  if [ -z "$_bcachefs" ] && [ "$_basever" != "54" ]; then
+  if [ -z "$_bcachefs" ] && [ "$_basever" != "54" ] && [ "$_basever" != "510" ]; then
      plain ""
      plain "Add Bcache filesystem support? You'll have to install bcachefs-tools-git from AUR for utilities."
      plain "https://bcachefs.org/"
