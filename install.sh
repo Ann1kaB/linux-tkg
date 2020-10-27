@@ -54,11 +54,12 @@ _cpu_opt_patch_link="https://raw.githubusercontent.com/graysky2/kernel_gcc_patch
 
 source customization.cfg
 
-if [ "$1" != "install" ] && [ "$1" != "config" ] && [ "$1" != "uninstall-help" ]; then
+if [ "$1" != "install" ] && [ "$1" != "build" ] && [ "$1" != "config" ] && [ "$1" != "uninstall-help" ]; then
   msg2 "Argument not recognised, options are:
         - config : shallow clones the linux ${_basekernel}.x git tree into the folder linux-${_basekernel}, then applies on it the extra patches and prepares the .config file 
                    by copying the one from the current linux system in /boot/config-`uname -r` and updates it. 
         - install : [RPM and DEB based distros only], does the config step, proceeds to compile, then prompts to install
+        - build : [RPM and DEB based distros only], does the config step, proceeds to compile, does not prompt to install
         - uninstall-help : [RPM and DEB based distros only], lists the installed kernels in this system, then gives a hint on how to uninstall them manually."
   exit 0
 fi
@@ -71,9 +72,9 @@ fi
 
 _misc_adds="false" # We currently don't want this enabled on non-Arch
 
-if [ "$1" = "install" ] || [ "$1" = "config" ]; then
+if [ "$1" = "install" ] || [ "$1" = "build" ] || [ "$1" = "config" ]; then
 
-  if [ -z $_distro ] && [ "$1" = "install" ]; then
+  if [ -z $_distro ] && [ "$1" = "install" ] || [ "$1" = "build" ] ; then
     while true; do
       echo "Which linux distribution are you running ?"
       echo "if it's not on the list, chose the closest one to it: Fedora/Suse for RPM, Ubuntu/Debian for DEB"
@@ -101,7 +102,7 @@ if [ "$1" = "install" ] || [ "$1" = "config" ]; then
     done
   fi
 
-  if [[ $1 = "install" && "$_distro" != "Ubuntu" && "$_distro" != "Debian" &&  "$_distro" != "Fedora" && "$_distro" != "Suse" ]]; then 
+  if [[ $1 = "install" && $1 = "build" && "$_distro" != "Ubuntu" && "$_distro" != "Debian" &&  "$_distro" != "Fedora" && "$_distro" != "Suse" ]]; then 
     msg2 "Variable \"_distro\" in \"customization.cfg\" hasn't been set to \"Ubuntu\", \"Debian\",  \"Fedora\" or \"Suse\""
     msg2 "This script can only install custom kernels for RPM and DEB based distros, though only those keywords are permitted. Exiting..."
     exit 0
@@ -110,13 +111,13 @@ if [ "$1" = "install" ] || [ "$1" = "config" ]; then
   if [ "$_compiler_name" = "llvm" ]; then
     clang_deps="llvm clang lld"
   fi
-  if [ "$_distro" = "Ubuntu" ] || [ "$_distro" = "Debian" ]; then
+  if [ "$_distro" = "Ubuntu" ] || [ "$_distro" = "Debian" ] && [ -x /usr/bin/apt ]; then
     msg2 "Installing dependencies"
     sudo apt install git build-essential kernel-package fakeroot libncurses5-dev libssl-dev ccache bison flex qtbase5-dev ${clang_deps} -y
-  elif [ "$_distro" = "Fedora" ]; then
+  elif [ "$_distro" = "Fedora" ] && [ -x /usr/bin/dnf ]; then
     msg2 "Installing dependencies"
     sudo dnf install fedpkg fedora-packager rpmdevtools ncurses-devel pesign grubby qt5-devel libXi-devel gcc-c++ git ccache flex bison elfutils-libelf-devel openssl-devel dwarves rpm-build ${clang_deps} -y
-  elif [ "$_distro" = "Suse" ]; then
+  elif [ "$_distro" = "Suse" ] && [ -x /usr/bin/zypper ]; then
     msg2 "Installing dependencies"
     sudo zypper install -y rpmdevtools ncurses-devel pesign libXi-devel gcc-c++ git ccache flex bison elfutils libelf-devel openssl-devel dwarves make patch bc rpm-build libqt5-qtbase-common-devel libqt5-qtbase-devel lz4 ${clang_deps}
   fi
@@ -199,13 +200,21 @@ if [ "$1" = "install" ] || [ "$1" = "config" ]; then
   yes '' | make oldconfig
   msg2 "Done"
 
+  # source cpuschedset early because otherwise it doesn't make it to source package name
+  source "$srcdir"/cpuschedset
+
   # apply linux-tkg patching script
   _tkg_srcprep
 
   msg2 "Configuration done."
 fi
 
-if [ "$1" = "install" ]; then
+# if host Distro is not Debian/Ubuntu, remove build deps from mkdebian script
+if [ "$1" = "build" ] && [ "$_distro" = "Ubuntu" ] || [ "$_distro" = "Debian" ] && [ ! -x /usr/bin/apt ]; then
+  sed -i -e 's/Build-Depends:.*/Build-Depends:/' ./scripts/package/mkdebian
+fi
+
+if [ "$1" = "install" ] || [ "$1" = "build" ]; then
 
   # Use custom compiler paths if defined
   if [ -n "${CUSTOM_GCC_PATH}" ]; then
@@ -255,22 +264,24 @@ if [ "$1" = "install" ]; then
       # Move rpm files to RPMS folder inside the linux-tkg folder
       mv "$_where"/*.deb "$_where"/DEBS/
 
-      read -p "Do you want to install the new Kernel ? y/[n]: " _install
-      if [[ $_install =~ [yY] ]] || [ $_install = "yes" ] || [ $_install = "Yes" ]; then
-        cd "$_where"
-        if [[ "$_sub" = rc* ]]; then
-          _kernelname=$_basekernel.$_kernel_subver-$_sub-$_kernel_flavor
-        else
-          _kernelname=$_basekernel.$_kernel_subver-$_kernel_flavor
+      if [ "$1" != "build" ]; then
+        read -p "Do you want to install the new Kernel ? y/[n]: " _install
+        if [[ $_install =~ [yY] ]] || [ $_install = "yes" ] || [ $_install = "Yes" ]; then
+          cd "$_where"
+          if [[ "$_sub" = rc* ]]; then
+            _kernelname=$_basekernel.$_kernel_subver-$_sub-$_kernel_flavor
+          else
+            _kernelname=$_basekernel.$_kernel_subver-$_kernel_flavor
+          fi
+          _headers_deb="linux-headers-${_kernelname}*.deb"
+          _image_deb="linux-image-${_kernelname}_*.deb"
+          _kernel_devel_deb="linux-libc-dev_${_kernelname}*.deb"
+          
+          cd DEBS
+          sudo dpkg -i $_headers_deb $_image_deb $_kernel_devel_deb
+          fi
         fi
-        _headers_deb="linux-headers-${_kernelname}*.deb"
-        _image_deb="linux-image-${_kernelname}_*.deb"
-        _kernel_devel_deb="linux-libc-dev_${_kernelname}*.deb"
-        
-        cd DEBS
-        sudo dpkg -i $_headers_deb $_image_deb $_kernel_devel_deb
       fi
-    fi
 
   elif [[ "$_distro" = "Fedora" ||  "$_distro" = "Suse" ]]; then
 
@@ -298,28 +309,30 @@ if [ "$1" = "install" ]; then
       #Clean up the original folder, unneeded and takes a lot of space
       rm -rf ~/rpmbuild/
 
-      read -p "Do you want to install the new Kernel ? y/[n]: " _install
-      if [ "$_install" = "y" ] || [ "$_install" = "Y" ] || [ "$_install" = "yes" ] || [ "$_install" = "Yes" ]; then
-        
-        if [[ "$_sub" = rc* ]]; then
-          _kernelname=$_basekernel.${_kernel_subver}_${_sub}_$_kernel_flavor
-        else
-          _kernelname=$_basekernel.${_kernel_subver}_$_kernel_flavor
+      if [ "$1" != "build" ]; then
+        read -p "Do you want to install the new Kernel ? y/[n]: " _install
+        if [ "$_install" = "y" ] || [ "$_install" = "Y" ] || [ "$_install" = "yes" ] || [ "$_install" = "Yes" ]; then
+          
+          if [[ "$_sub" = rc* ]]; then
+            _kernelname=$_basekernel.${_kernel_subver}_${_sub}_$_kernel_flavor
+          else
+            _kernelname=$_basekernel.${_kernel_subver}_$_kernel_flavor
+          fi
+          _headers_rpm="kernel-headers-${_kernelname}*.rpm"
+          _kernel_rpm="kernel-${_kernelname}*.rpm"
+          _kernel_devel_rpm="kernel-devel-${_kernelname}*.rpm"
+          
+          cd RPMS
+          if [ "$_distro" = "Fedora" ]; then
+            sudo dnf install $_headers_rpm $_kernel_rpm $_kernel_devel_rpm
+          elif [ "$_distro" = "Suse" ]; then
+            msg2 "Some files from 'linux-glibc-devel' will be replaced by files from the custom kernel-hearders package"
+            msg2 "To revert back to the original kernel headers do 'sudo zypper install -f linux-glibc-devel'" 
+            sudo zypper install --replacefiles --allow-unsigned-rpm $_headers_rpm $_kernel_rpm $_kernel_devel_rpm
+          fi
+          
+          msg2 "Install successful" 
         fi
-        _headers_rpm="kernel-headers-${_kernelname}*.rpm"
-        _kernel_rpm="kernel-${_kernelname}*.rpm"
-        _kernel_devel_rpm="kernel-devel-${_kernelname}*.rpm"
-        
-        cd RPMS
-        if [ "$_distro" = "Fedora" ]; then
-          sudo dnf install $_headers_rpm $_kernel_rpm $_kernel_devel_rpm
-        elif [ "$_distro" = "Suse" ]; then
-          msg2 "Some files from 'linux-glibc-devel' will be replaced by files from the custom kernel-hearders package"
-          msg2 "To revert back to the original kernel headers do 'sudo zypper install -f linux-glibc-devel'" 
-          sudo zypper install --replacefiles --allow-unsigned-rpm $_headers_rpm $_kernel_rpm $_kernel_devel_rpm
-        fi
-        
-        msg2 "Install successful" 
       fi
     fi
   fi
