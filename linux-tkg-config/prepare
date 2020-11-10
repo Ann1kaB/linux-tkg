@@ -346,6 +346,12 @@ _tkg_srcprep() {
     cd ${wrksrc}/linux-${_kern_ver}
   fi
 
+  # LLVM_IAS patch
+  if [ "$_LLVM_IAS" = "true" ]; then
+    msg2 "Patching LLVM_IAS support"
+    tkgpatch="$srcdir/llvm-ias.patch" && _tkg_patcher
+  fi
+
   # graysky's cpu opts - https://github.com/graysky2/kernel_gcc_patch
   if [ "$_compiler_name" != "-llvm" ]; then
     msg2 "Applying graysky's cpu opts patch"
@@ -1081,14 +1087,6 @@ _tkg_srcprep() {
       msg2 "Patching missing symbol for AES-NI/AVX support on ZFS"
       tkgpatch="$srcdir/0011-ZFS-fix.patch" && _tkg_patcher
     fi
-  fi
-
-  # LLVM_IAS patch
-  if [ "$_LLVM_IAS" = "true" ]; then
-    msg2 "Patching LLVM_IAS support"
-    tkgpatch="$srcdir/0014-llvm-ias-01.patch" && _tkg_patcher
-    tkgpatch="$srcdir/0014-llvm-ias-02.patch" && _tkg_patcher
-    tkgpatch="$srcdir/0014-llvm-ias-03.patch" && _tkg_patcher
   fi
 
   # Community patches
