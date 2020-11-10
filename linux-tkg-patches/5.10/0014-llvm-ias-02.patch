@@ -1,0 +1,60 @@
+diff --git a/Makefile b/Makefile
+index 75b1a3dcbf30..e23786a4c1c7 100644
+--- a/Makefile
++++ b/Makefile
+@@ -826,12 +826,14 @@  else
+ DEBUG_CFLAGS   += -g
+ endif
+
+-ifneq ($(LLVM_IAS),1)
+-KBUILD_AFLAGS  += -Wa,-gdwarf-2
+-endif
+-
+-ifdef CONFIG_DEBUG_INFO_DWARF4
+-DEBUG_CFLAGS   += -gdwarf-4
++dwarf-version-$(CONFIG_DEBUG_INFO_DWARF2) := 2
++dwarf-version-$(CONFIG_DEBUG_INFO_DWARF4) := 4
++DEBUG_CFLAGS   += -gdwarf-$(dwarf-version-y)
++ifneq ($(dwarf-version-y)$(LLVM_IAS),21)
++# Binutils 2.35+ required for -gdwarf-4+ support.
++dwarf-aflag    := $(call as-option,-Wa$(comma)-gdwarf-$(dwarf-version-y))
++DEBUG_CFLAGS   += $(dwarf-aflag)
++KBUILD_AFLAGS  += $(dwarf-aflag)
+ endif
+
+ ifdef CONFIG_DEBUG_INFO_REDUCED
+diff --git a/lib/Kconfig.debug b/lib/Kconfig.debug
+index 83a860126897..03c494eefabd 100644
+--- a/lib/Kconfig.debug
++++ b/lib/Kconfig.debug
+@@ -256,14 +256,25 @@  config DEBUG_INFO_SPLIT
+          to know about the .dwo files and include them.
+          Incompatible with older versions of ccache.
+
++choice
++       prompt "DWARF version"
++       help
++         Which version of DWARF debug info to emit.
++
++config DEBUG_INFO_DWARF2
++       bool "Generate DWARF v2 debuginfo"
++       help
++         Generate DWARF v2 debug info.
++
+ config DEBUG_INFO_DWARF4
+        bool "Generate dwarf4 debuginfo"
+        depends on $(cc-option,-gdwarf-4)
+        help
+-         Generate dwarf4 debug info. This requires recent versions
+-         of gcc and gdb. It makes the debug information larger.
+-         But it significantly improves the success of resolving
+-         variables in gdb on optimized code.
++         Generate DWARF v4 debug info. This requires gcc 4.5+ and gdb 7.0+.
++         It makes the debug information larger, but it significantly
++         improves the success of resolving variables in gdb on optimized code.
++
++endchoice # "DWARF version"
+
+ config DEBUG_INFO_BTF
+        bool "Generate BTF typeinfo"
+

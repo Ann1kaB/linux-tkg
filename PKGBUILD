@@ -316,6 +316,7 @@ case $_basever in
         0011-ZFS-fix.patch
         #0012-linux-hardened.patch
         0012-misc-additions.patch
+	0014-llvm-ias-01.patch
     )
     sha256sums=('6d9f639bbfa060ffa35440b3ae4b2242f004cee891c3a03ffcd6b42bb3f9fc23'
             '5ab29eb64e57df83b395a29a6a4f89030d142feffbfbf73b3afc6d97a2a7fd12'
@@ -339,7 +340,10 @@ case $_basever in
             'a557b342111849a5f920bbe1c129f3ff1fc1eff62c6bd6685e0972fc88e39911'
             'a5149d7220457d30e03e6999f35a050bce46acafc6230bfe6b4d4994c523516d'
             '49262ce4a8089fa70275aad742fc914baa28d9c384f710c9a62f64796d13e104'
-            '433b919e6a0be26784fb4304c43b1811a28f12ad3de9e26c0af827f64c0c316e')
+            '433b919e6a0be26784fb4304c43b1811a28f12ad3de9e26c0af827f64c0c316e'
+	    'dc16ec287a55c6843f0f40af7606779cd06fb5907f057deb43644c132d5ee582'
+            'af74cd83031c8c2a981e85aefb9622abccdfcf5b081e012ba70a7f78d62a78b3'
+            '45600acee5f4addc9caaff2f90694eda4c08946604f9dcbdbb047114a179d26a')
 	;;
 esac
 

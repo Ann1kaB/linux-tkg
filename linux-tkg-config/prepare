@@ -211,13 +211,28 @@ _tkg_initscript() {
     read -rp "`echo $'  > 1.GCC (recommended)\n    2.Clang/LLVM\nchoice[1-2?]: '`" _CONDITION_CMPLR;
     if [ "$_CONDITION_CMPLR" = "2" ];then
       echo "_compiler_name=\"-llvm\"" > ${_path}/compilerset
-      echo "llvm_opt=\"LLVM=1\"" >> ${_path}/compilerset
+      if [ "$_basever" = "510" ] && [ "$_LLVM_IAS" != "true" ]; then
+	plain "Do you want to use LLVM's Integrated Assembler?"
+	read -rp "`echo $'    > N/y : '`" _IAS_COND;
+      elif [ "$_basever" = "510" ] && [ "$_LLVM_IAS" = "true" ]; then
+	echo "llvm_opt=\"LLVM=1 LLVM_IAS=1\"" >> ${_path}/compilerset
+      else
+        echo "llvm_opt=\"LLVM=1\"" >> ${_path}/compilerset
+      fi
+      if [[ "$_IAS_COND" =~ [yY] ]]; then
+	echo "_LLVM_IAS=\"true\"" >> ${_path}/compilerset
+	echo "llvm_opt=\"LLVM_IAS=1 LLVM=1\"" >> ${_path}/compilerset
+      fi
     else
       echo "_compiler_name=" >> ${_path}/compilerset
     fi
   elif [ "$_compiler" = "llvm" ]; then
-      echo "_compiler_name=\"-llvm\"" > ${_path}/compilerset
+    echo "_compiler_name=\"-llvm\"" > ${_path}/compilerset
+    if [ "$_basever" = "510" ] && [ "$_LLVM_IAS" = "true" ]; then
+      echo "llvm_opt=\"LLVM=1 LLVM_IAS=1\"" >> ${_path}/compilerset
+    else
       echo "llvm_opt=\"LLVM=1\"" >> ${_path}/compilerset
+    fi
   elif [ "$_compiler" = "gcc" ]; then
       echo "_compiler_name=" >> ${_path}/compilerset
   else
@@ -486,9 +501,17 @@ _tkg_srcprep() {
     fi
   fi
   # Skip dbg package creation on non-Arch
-  if [ "$_distro" != "Arch" ]; then
+  if [ "$_distro" != "Arch" ] && [ "$_compiler_name" != "-llvm" ]; then
     sed -i -e 's/CONFIG_DEBUG_INFO.*/CONFIG_DEBUG_INFO=n/' ./.config
   fi
+
+  # LLVM_IAS=1 requires DEBUG_INFO
+  if [ "$_LLVM_IAS" = "true" ]; then
+    sed -i -e 's/.*CONFIG_DEBUG_INFO_REDUCED.*/CONFIG_DEBUG_INFO_REDUCED=y/' ./.config
+    sed -i -e 's/.*CONFIG_DEBUG_INFO_COMPRESSED.*/CONFIG_DEBUG_INFO_COMPRESSED=y/' ./.config
+    sed -i -e 's/.*CONFIG_DEBUG_INFO_SPLIT.*/CONFIG_DEBUG_INFO_SPLIT=y/' ./.config
+  fi
+
   if [ "$_compiler_name" = "-llvm" ]; then
     if [ "$_basever" != "54" ] && [ "$_basever" != "57" ] && [ "$_basever" != "58" ]; then
       echo 'CONFIG_INIT_STACK_ALL_PATTERN=n' >> ./.config
@@ -1058,6 +1081,14 @@ _tkg_srcprep() {
       msg2 "Patching missing symbol for AES-NI/AVX support on ZFS"
       tkgpatch="$srcdir/0011-ZFS-fix.patch" && _tkg_patcher
     fi
+  fi
+
+  # LLVM_IAS patch
+  if [ "$_LLVM_IAS" = "true" ]; then
+    msg2 "Patching LLVM_IAS support"
+    tkgpatch="$srcdir/0014-llvm-ias-01.patch" && _tkg_patcher
+    tkgpatch="$srcdir/0014-llvm-ias-02.patch" && _tkg_patcher
+    tkgpatch="$srcdir/0014-llvm-ias-03.patch" && _tkg_patcher
   fi
 
   # Community patches
