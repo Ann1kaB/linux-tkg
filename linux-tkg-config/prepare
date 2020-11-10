@@ -507,7 +507,7 @@ _tkg_srcprep() {
     fi
   fi
   # Skip dbg package creation on non-Arch
-  if [ "$_distro" != "Arch" ] && [ "$_compiler_name" != "-llvm" ]; then
+  if [ "$_distro" != "Arch" ] && [[ "$_LLVM_IAS" != "true" && "$_basever" = "510" ]]; then
     sed -i -e 's/CONFIG_DEBUG_INFO.*/CONFIG_DEBUG_INFO=n/' ./.config
   fi
 
