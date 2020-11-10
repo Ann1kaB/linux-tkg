@@ -349,7 +349,7 @@ _tkg_srcprep() {
   # LLVM_IAS patch
   if [ "$_LLVM_IAS" = "true" ]; then
     msg2 "Patching LLVM_IAS support"
-    tkgpatch="$srcdir/llvm-ias.patch" && _tkg_patcher
+    tkgpatch="$srcdir/0014-llvm-ias.patch" && _tkg_patcher
   fi
 
   # graysky's cpu opts - https://github.com/graysky2/kernel_gcc_patch

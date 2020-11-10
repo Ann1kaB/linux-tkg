@@ -1,0 +1,97 @@
+From 36357158d5814caad7cf101d95d7d226fdfe7618 Mon Sep 17 00:00:00 2001
+From: Tony <hyperkvmx86@gmail.com>
+Date: Tue, 10 Nov 2020 00:04:47 -0500
+Subject: [PATCH] LLVM_IAS patches
+
+---
+ Makefile                          | 13 +++++++++----
+ include/asm-generic/vmlinux.lds.h |  6 +++++-
+ lib/Kconfig.debug                 | 27 +++++++++++++++++++++++----
+ 3 files changed, 37 insertions(+), 9 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 008aba5f1a20..364eafcd3772 100644
+--- a/Makefile
++++ b/Makefile
+@@ -828,10 +828,15 @@ else
+ DEBUG_CFLAGS	+= -g
+ endif
+ 
+-KBUILD_AFLAGS	+= -Wa,-gdwarf-2
+-
+-ifdef CONFIG_DEBUG_INFO_DWARF4
+-DEBUG_CFLAGS	+= -gdwarf-4
++dwarf-version-$(CONFIG_DEBUG_INFO_DWARF2) := 2
++dwarf-version-$(CONFIG_DEBUG_INFO_DWARF4) := 4
++dwarf-version-$(CONFIG_DEBUG_INFO_DWARF5) := 5
++DEBUG_CFLAGS	+= -gdwarf-$(dwarf-version-y)
++ifneq ($(dwarf-version-y)$(LLVM_IAS),21)
++# Binutils 2.35+ required for -gdwarf-4+ support.
++dwarf-aflag	:= $(call as-option,-Wa$(comma)-gdwarf-$(dwarf-version-y))
++DEBUG_CFLAGS	+= $(dwarf-aflag)
++KBUILD_AFLAGS	+= $(dwarf-aflag)
+ endif
+ 
+ ifdef CONFIG_DEBUG_INFO_REDUCED
+diff --git a/include/asm-generic/vmlinux.lds.h b/include/asm-generic/vmlinux.lds.h
+index b2b3d81b1535..76ce62c77029 100644
+--- a/include/asm-generic/vmlinux.lds.h
++++ b/include/asm-generic/vmlinux.lds.h
+@@ -829,7 +829,11 @@
+ 		.debug_types	0 : { *(.debug_types) }			\
+ 		/* DWARF 5 */						\
+ 		.debug_macro	0 : { *(.debug_macro) }			\
+-		.debug_addr	0 : { *(.debug_addr) }
++		.debug_addr	0 : { *(.debug_addr) }			\
++		.debug_line_str	0 : { *(.debug_line_str) }		\
++		.debug_loclists	0 : { *(.debug_loclists) }		\
++		.debug_rnglists	0 : { *(.debug_rnglists) }		\
++		.debug_str_offsets	0 : { *(.debug_str_offsets) }
+ 
+ /* Stabs debugging sections. */
+ #define STABS_DEBUG							\
+diff --git a/lib/Kconfig.debug b/lib/Kconfig.debug
+index c789b39ed527..6479cfa07ef9 100644
+--- a/lib/Kconfig.debug
++++ b/lib/Kconfig.debug
+@@ -256,14 +256,33 @@ config DEBUG_INFO_SPLIT
+ 	  to know about the .dwo files and include them.
+ 	  Incompatible with older versions of ccache.
+ 
++choice
++	prompt "DWARF version"
++	help
++	  Which version of DWARF debug info to emit.
++
++config DEBUG_INFO_DWARF2
++	bool "Generate DWARF v2 debuginfo"
++	help
++	  Generate DWARF v2 debug info.
++
+ config DEBUG_INFO_DWARF4
+ 	bool "Generate dwarf4 debuginfo"
+ 	depends on $(cc-option,-gdwarf-4)
+ 	help
+-	  Generate dwarf4 debug info. This requires recent versions
+-	  of gcc and gdb. It makes the debug information larger.
+-	  But it significantly improves the success of resolving
+-	  variables in gdb on optimized code.
++	  Generate DWARF v4 debug info. This requires gcc 4.5+ and gdb 7.0+.
++	  It makes the debug information larger, but it significantly
++	  improves the success of resolving variables in gdb on optimized code.
++
++config DEBUG_INFO_DWARF5
++	bool "Generate DWARF5 debuginfo"
++	depends on $(cc-option,-gdwarf-5)
++	depends on $(success,$(srctree)/scripts/test_dwarf5_support.sh $(CC) $(CLANG_FLAGS))
++	help
++	  Genereate dwarf5 debug info. Requires binutils 2.35+, gcc 5.1+, and
++	  gdb 8.0+.
++
++endchoice # "DWARF version"
+ 
+ config DEBUG_INFO_BTF
+ 	bool "Generate BTF typeinfo"
+-- 
+2.29.0
+
