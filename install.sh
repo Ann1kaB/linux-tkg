@@ -50,6 +50,9 @@ case "$_basever" in
 	"510")
 	opt_ver="5.8%2B"
 	;;
+	"511")
+	opt_ver="5.8%2B"
+	;;
 esac
 
 _cpu_opt_patch_link="https://raw.githubusercontent.com/graysky2/kernel_gcc_patch/master/enable_additional_cpu_optimizations_for_gcc_v10.1%2B_kernel_v${opt_ver}.patch"  

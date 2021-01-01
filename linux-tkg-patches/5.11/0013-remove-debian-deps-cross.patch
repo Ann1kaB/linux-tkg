@@ -1,0 +1,25 @@
+From d423af310dc2679b623da5c2340b516294ebef05 Mon Sep 17 00:00:00 2001
+From: Hyper-KVM <hyperkvmx86@gmail.com>
+Date: Tue, 27 Oct 2020 14:17:09 -0400
+Subject: [PATCH] Remove build deps for Debian/Ubuntu (APT)
+
+---
+ scripts/package/mkdebian | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/scripts/package/mkdebian b/scripts/package/mkdebian
+index 60a2a63a5e90..e8c27950ab6e 100755
+--- a/scripts/package/mkdebian
++++ b/scripts/package/mkdebian
+@@ -175,7 +175,7 @@ Section: kernel
+ Priority: optional
+ Maintainer: $maintainer
+ Rules-Requires-Root: no
+-Build-Depends: bc, rsync, kmod, cpio, bison, flex | flex:native $extra_build_depends
++Build-Depends:
+ Homepage: https://www.kernel.org/
+ 
+ Package: $packagename-$version
+-- 
+2.29.0
+

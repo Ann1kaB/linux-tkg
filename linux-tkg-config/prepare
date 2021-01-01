@@ -5,6 +5,7 @@ ver57=19
 ver58=18
 ver59=16
 ver510=4
+ver511=rc1
 
 _tkg_initscript() {
   # Load external configuration file if present. Available variable values will overwrite customization.cfg ones.
@@ -27,7 +28,7 @@ _tkg_initscript() {
 
   if [ -z "$_version" ] && [ ! -e "$_path"/versel ]; then
     plain "Which kernel version do you want to install?"
-    read -rp "`echo $'    1. 5.4 LTS\n    2. 5.7\n    3. 5.8\n    4. 5.9\n  > 5. 5.10\nchoice[1-5?]'`" _VERSEL;
+    read -rp "`echo $'    1. 5.4 LTS\n    2. 5.7\n    3. 5.8\n    4. 5.9\n    5. 5.11\n  > 6. 5.10\nchoice[1-5?]'`" _VERSEL;
     case $_VERSEL in
           "1")
           echo "_basever=54" > "$_path"/versel
@@ -48,6 +49,11 @@ _tkg_initscript() {
           echo "_basever=59" > "$_path"/versel
           echo "_basekernel=5.9" >> "$_path"/versel
           echo "_sub=${ver59}" >> "$_path"/versel
+          ;;
+          "5")
+          echo "_basever=511" > "$_path"/versel
+          echo "_basekernel=5.11" >> "$_path"/versel
+          echo "_sub=${ver511}" >> "$_path"/versel
           ;;
           *)
           echo "_basever=510" > "$_path"/versel
@@ -81,6 +87,11 @@ _tkg_initscript() {
 		echo "_basever=510" > "$_path"/versel
 		echo "_basekernel=5.10" >> "$_path"/versel
 		echo "_sub=${ver510}" >> "$_path"/versel
+		;;
+		"5.11")
+		echo "_basever=511" > "$_path"/versel
+		echo "_basekernel=5.11" >> "$_path"/versel
+		echo "_sub=${ver511}" >> "$_path"/versel
 		;;
 		*)
 		error "There is something wrong with your kernel version selection, exiting..."
@@ -129,7 +140,7 @@ _tkg_initscript() {
       prompt="`echo $'  > 1.PDS\n    2.MuQSS\n    3.BMQ\n    4.CFS\nchoice[1-4?]: '`"
     elif [ "$_basever" = "58" ]; then
       prompt="`echo $'  > 1.Undead PDS (TkG)\n    2.Project C / PDS\n    3.Project C / BMQ\n    4.CFS\nchoice[1-4?]: '`"
-    elif [ "$_basever" = "59" ] || [ "$_basever" = "510" ]; then
+    elif [ "$_basever" = "59" ] || [ "$_basever" = "510" ] || [ "$_basever" = "511" ]; then
       prompt="`echo $'  > 1.Undead PDS (TkG)\n    2.Project C / PDS\n    3.Project C / BMQ\n    4.MuQSS\n    5.CFS\nchoice[1-5?]: '`"
     else
       prompt="`echo $'  > 1.Project C / PDS\n    2.Project C / BMQ\n    3.MuQSS\n    4.CFS\nchoice[1-4?]: '`"
@@ -138,13 +149,13 @@ _tkg_initscript() {
     if [ "$CONDITION" = "2" ];then
       if [ "$_basever" = "54" ] || [ "$_basever" = "57" ]; then
         echo "_cpusched=\"MuQSS\"" > "${_path}"/cpuschedset
-      elif [ "$_basever" = "58" ] || [ "$_basever" = "59" ] || [ "$_basever" = "510" ]; then
+      elif [ "$_basever" = "58" ] || [ "$_basever" = "59" ] || [ "$_basever" = "510" ] || [ "$_basever" = "511" ]; then
         echo "_cpusched=\"pds\"" > "${_path}"/cpuschedset
       else
         echo "_cpusched=\"bmq\"" > "${_path}"/cpuschedset
       fi
     elif [ "$CONDITION" = "3" ]; then
-      if [ "$_basever" = "54" ] || [ "$_basever" = "57" ] || [ "$_basever" = "58" ] || [ "$_basever" = "59" ] || [ "$_basever" = "510" ]; then
+      if [ "$_basever" = "54" ] || [ "$_basever" = "57" ] || [ "$_basever" = "58" ] || [ "$_basever" = "59" ] || [ "$_basever" = "510" ] || [ "$_basever" = "511" ]; then
         echo "_cpusched=\"bmq\"" > "${_path}"/cpuschedset
       else
         echo "_cpusched=\"MuQSS\"" > "${_path}"/cpuschedset
@@ -158,7 +169,7 @@ _tkg_initscript() {
     elif [ "$CONDITION" = "5" ]; then
       echo "_cpusched=\"cfs\"" > "${_path}"/cpuschedset
     else
-      if [ "$_basever" = "58" ] || [ "$_basever" = "59" ] || [ "$_basever" = "510" ]; then
+      if [ "$_basever" = "58" ] || [ "$_basever" = "59" ] || [ "$_basever" = "510" ] || [ "$_basever" = "511" ]; then
         echo "_cpusched=\"upds\"" > "${_path}"/cpuschedset
       else
         echo "_cpusched=\"pds\"" > "${_path}"/cpuschedset
